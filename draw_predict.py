@@ -8,20 +8,24 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
-model_path = "resources/model/model.h5"
+# model_path = "resources/model/model.h5"
+model_path = "resources/model/model_conv2d.h5"
 
 
 class Model(object):
 
     def __init__(self):
-        self.model = tf.keras.models.load_model("resources/model/model.h5")
+        self.model = tf.keras.models.load_model(model_path)
 
     def predict(self, image):
         image = cv2.resize(image, (28, 28))
         image = tf.convert_to_tensor(image, dtype=tf.float32) / 255.
         if len(image.shape) == 3:
             image = tf.expand_dims(image, axis=0)
-        inputs = tf.reshape(image, (-1, 28 * 28))
+        if "conv2d" in model_path:
+            inputs = tf.reshape(image, (-1, 28, 28, 1))
+        else:
+            inputs = tf.reshape(image, (-1, 28 * 28))
         outputs = self.model(inputs)
         index = tf.argmax(outputs, axis=1).numpy()[0]
         score = tf.reduce_max(outputs, axis=1).numpy()[0]
@@ -38,18 +42,18 @@ class Draw(object):
         cv2.namedWindow(self.window_name)
         # create switch for ON/OFF functionality
         self.switch1 = '0 : pen \n1 : clear'
-        self.switch2 = '0: draw \n1: predict '
+        self.switch2 = 'predict'
         cv2.createTrackbar(self.switch1, self.window_name, 0, 1, self.nothing)
-        cv2.createTrackbar(self.switch2, self.window_name, 0, 1, self.identify)
+        cv2.createTrackbar(self.switch2, self.window_name, 0, 9, self.nothing)
 
     def nothing(self, x):
         pass
 
-    def identify(self, flag):
-        if flag == 1:
-            image = self.frame[..., 0]
-            index, score = self.model.predict(image)
-            print("预测结果 ", index, "score", score)
+    def identify(self):
+        image = self.frame[..., 0]
+        index, score = self.model.predict(image)
+        print("预测结果 ", index, "score", score)
+        cv2.setTrackbarPos(self.switch2, self.window_name, index)
 
     def draw_circle(self, event, x, y, flags, param):
         """
@@ -70,10 +74,11 @@ class Draw(object):
             ix, iy = x, y
         elif event == cv2.EVENT_MOUSEMOVE:
             if self.drawing == True:
-                cv2.circle(self.frame, (x, y), 10, (g, b, r), -1)
+                cv2.circle(self.frame, (x, y), 7, (g, b, r), -1)
         elif event == cv2.EVENT_LBUTTONUP:
             self.drawing = False
-            cv2.circle(self.frame, (x, y), 10, (g, b, r), -1)
+            cv2.circle(self.frame, (x, y), 7, (g, b, r), -1)
+            self.identify()
 
     def loop(self):
         while 1:
@@ -84,6 +89,8 @@ class Draw(object):
             s = cv2.getTrackbarPos(self.switch1, self.window_name)
             if s == 1:
                 self.frame[:] = 0
+                cv2.waitKey(800)
+                cv2.setTrackbarPos(self.switch1, self.window_name, 0)
             else:
                 cv2.setMouseCallback(self.window_name, self.draw_circle)
         cv2.destroyAllWindows()

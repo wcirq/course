@@ -34,10 +34,15 @@ val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
 val_dataset = val_dataset.batch(200)
 
 model = keras.Sequential([
-    layers.Dense(1024, activation='relu'),
-    layers.Dense(512, activation='relu'),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.Conv2D(32, (3, 3), activation='relu'),
+    layers.Reshape((-1,)),
     layers.Dense(128, activation='relu'),
-    layers.Dense(10)])
+    layers.Dense(64, activation='relu'),
+    layers.Dense(10)]
+    )
 
 optimizer = optimizers.SGD(learning_rate=0.01)
 
@@ -47,8 +52,8 @@ def train_epoch(epoch):
     for step, (x, y) in enumerate(train_dataset):
 
         with tf.GradientTape() as tape:
-            # [b, 28, 28] => [b, 784]
-            x = tf.reshape(x, (-1, 28 * 28))
+            # [b, 28, 28] => [b, 28, 28, 1]
+            x = tf.reshape(x, (-1, 28, 28, 1))
             # Step1. compute output
             # [b, 784] => [b, 10]
             out = model(x)
@@ -68,7 +73,7 @@ def train_epoch(epoch):
             val_accuracies = []
             for index, (x_val, y_val) in enumerate(val_dataset):
                 # [b, 28, 28] => [b, 784]
-                x_val = tf.reshape(x_val, (-1, 28 * 28))
+                x_val = tf.reshape(x_val, (-1, 28, 28, 1))
                 # Step1. 计算输出
                 # [b, 784] => [b, 10]
                 out_val = model(x_val)
@@ -86,7 +91,7 @@ def train_epoch(epoch):
 def train():
     for epoch in range(30):
         train_epoch(epoch)
-    model.save("resources/model/model.h5")
+    model.save("resources/model/model_conv2d.h5")
 
 
 if __name__ == '__main__':
