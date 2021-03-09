@@ -23,6 +23,7 @@ y = tf.convert_to_tensor(y, dtype=tf.int32)
 y = tf.one_hot(y, depth=10)
 print(x.shape, y.shape)
 train_dataset = tf.data.Dataset.from_tensor_slices((x, y))
+
 train_dataset = train_dataset.batch(200)
 
 x_val = tf.convert_to_tensor(x_val, dtype=tf.float32) / 255.
@@ -32,11 +33,11 @@ val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val))
 val_dataset = val_dataset.batch(200)
 
 # 利用正态分布初始化
-# w = tf.Variable(initial_value=tf.random.normal((784, 10)))
-# b = tf.Variable(initial_value=tf.random.normal((10,)))
+w = tf.Variable(initial_value=tf.random.normal((784, 10)))
+b = tf.Variable(initial_value=tf.random.normal((10,)))
 # 利用均匀分布初始化初始化
-w = tf.Variable(initial_value=tf.random.uniform((784, 10)))
-b = tf.Variable(initial_value=tf.random.uniform((10,)))
+# w = tf.Variable(initial_value=tf.random.uniform((784, 10)))
+# b = tf.Variable(initial_value=tf.random.uniform((10,)))
 # 利用Glorot(Xavier)正太分布初始化
 # w = tf.Variable(initial_value=tf.initializers.GlorotNormal()((784, 10)))
 # b = tf.Variable(initial_value=tf.initializers.GlorotNormal()((10,)))
