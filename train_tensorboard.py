@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
 # @File train_tensorboard.py
 # @Time 2021/3/9 19:28
 # @Author wcy
@@ -41,7 +41,8 @@ y_test = tf.one_hot(y_test, depth=10)
 
 def create_model():
     layers = [tf.keras.layers.Flatten(input_shape=(28, 28))]
-    layers.extend([tf.keras.layers.Dense(32, activation='tanh', kernel_initializer="random_normal") for i in range(8)])
+    layers.extend([tf.keras.layers.Dense(32, activation='tanh', kernel_initializer="random_normal") for i in range(10)])
+    # layers.extend([tf.keras.layers.Dense(32, activation='tanh', kernel_initializer="glorot_normal") for i in range(10)])
     # layers.append(tf.keras.layers.Dense(10, activation='softmax'))
     layers.append(tf.keras.layers.Dense(10))
     return tf.keras.models.Sequential(layers)
@@ -58,7 +59,7 @@ test_dataset = test_dataset.batch(200)
 # loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
 loss_object = tf.keras.losses.MSE
 # optimizer = tf.keras.optimizers.Adam()
-optimizer = tf.keras.optimizers.SGD(learning_rate=0.015)
+optimizer = tf.keras.optimizers.SGD(learning_rate=0.0005)
 
 
 train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
@@ -105,8 +106,11 @@ if __name__ == '__main__':
             tf.summary.scalar('accuracy', train_accuracy.result(), step=epoch)
             # for var in model.trainable_variables:
             #     tf.summary.histogram(var.name, var, step=epoch)
+            inputs = x_train
             for var in model.layers:
-                tf.summary.histogram(var.output.name, var.output, step=epoch)
+                output = var(inputs)
+                tf.summary.histogram(var.name, var(inputs), step=epoch)
+                inputs = output
 
         for (x_test, y_test) in test_dataset:
             test_step(x_test, y_test)
