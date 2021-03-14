@@ -4,6 +4,7 @@
 # @Author wcy
 # @Software: PyCharm
 # @Site
+import cv2
 import tensorflow as tf
 import numpy as np
 from scipy import signal
@@ -55,6 +56,29 @@ def test2():
     print()
 
 
+def test3():
+    image = cv2.imread("images/cat.jpeg", 0)
+    h, w = image.shape
+    input = tf.cast(image, dtype=tf.float32)
+    input = tf.reshape(input, (1, h, w, 1))
+    # filters =np.array([
+    #     [1, 2],
+    #     [-2, -1]
+    # ], dtype=np.float32)
+    # filters = tf.reshape(filters, (2, 2, 1, 1))
+    filters = np.ones((5, 5), dtype=np.float32)/25
+    filters = tf.reshape(filters, (5, 5, 1, 1))
+    output = tf.nn.conv2d(input, filters, strides=[1, 1], padding="VALID")
+    output = tf.squeeze(output)
+    output = output.numpy()
+    output = (output-output.min())/(output.max()-output.min())
+    cv2.imshow("image", image)
+    cv2.imshow("output", output)
+    cv2.waitKey(0)
+    print()
+
+
 if __name__ == '__main__':
-    test1()
-    test2()
+    # test1()
+    # test2()
+    test3()
