@@ -78,8 +78,8 @@ def alpha_rain(rain, img, beta=0.8):
     rain_result[:, :, 1] = rain_result[:, :, 1] * (255 - rain[:, :, 0]) / 255 + beta * rain[:, :, 0]
     rain_result[:, :, 2] = rain_result[:, :, 2] * (255 - rain[:, :, 0]) / 255 + beta * rain[:, :, 0]
     cv2.imshow('rain_effct_result', rain_result)
-    cv2.waitKey()
-    cv2.destroyAllWindows()
+    cv2.waitKey(0)
+    cv2.destroyWindow("rain_effct_result")
 
 
 def main():
