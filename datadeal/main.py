@@ -10,7 +10,6 @@ import numpy as np
 from PIL import Image
 import xml.etree.ElementTree as ET
 
-
 classes = ["text"]
 
 
@@ -184,7 +183,7 @@ def main():
     batch_size = 3
     num_classes = len(classes)
     input_shape = (416, 416)
-    anchors = [12, 16,  19, 36,  40, 28,  36, 75,  76, 55,  72, 146,  142, 110,  192, 243,  459, 401]
+    anchors = [12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401]
     #   13x13的特征层对应的anchor是[142, 110], [192, 243], [459, 401]
     #   26x26的特征层对应的anchor是[36, 75], [76, 55], [72, 146]
     #   52x52的特征层对应的anchor是[12, 16], [19, 36], [40, 28]
@@ -198,7 +197,6 @@ def main():
         output26_26 = data[2]
         output52_52 = data[3]
         print()
-
 
 
 if __name__ == '__main__':
