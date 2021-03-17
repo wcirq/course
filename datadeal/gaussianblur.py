@@ -8,14 +8,6 @@ import cv2
 import numpy as np
 
 
-def normal(x, y=None, std=1.):
-    if y is None:
-        y = np.exp(-np.square(x) / (2 * np.square(std))) / (std * np.sqrt(2 * np.pi))
-    else:
-        y = np.exp(-np.square(np.square(x) + np.square(y)) / (2 * np.square(std))) / (2 * np.pi * np.square(std))
-    return y
-
-
 def gaussian_kernel(shape, std=1):
     h, w = shape[0], shape[1]
     kernel_index_h = np.linspace(-h // 2 + 1, h // 2, h)
@@ -28,25 +20,38 @@ def gaussian_kernel(shape, std=1):
 
 def my_gaussian_blur(img, shape, std=1):
     h, w = shape
+    assert len(img.shape) == 2, "只支持单通道图片"
+    assert h % 2 == 1 and w % 2 == 1, "shape的值必须为奇数"
+    # 归一化
+    img = (img-img.min())/(img.max()-img.min())
+    # 定义卷积核
     kernel = gaussian_kernel((h, w), std=std)
-    top = 1
-    bottom = 1
-    left = 1
-    right = 1
+    # 计算上下左右填充的数据行/列数
+    top = (h - 1) // 2
+    bottom = (h - 1) // 2
+    left = (w - 1) // 2
+    right = (w - 1) // 2
     img_pad = np.pad(img, ((top, bottom), (left, right)), 'constant', constant_values=(0, 0))
-    return
+    # 定义一个与 img shape一致的矩阵用于存储卷积运算结果
+    result = np.zeros_like(img, dtype=np.float64)
+    img_h, img_w = img.shape
+    for i in range(img_h):
+        for j in range(img_w):
+            result[i, j] = (img_pad[i:i + h, j:j+w] * kernel).sum()
+    return (result*255).astype(np.uint8)
 
 
 def main():
-    x = np.array([-1, 0, 1])
-    y = normal(x, std=1.5)
     std = 1
-    h, w = 3, 3
-    # img = np.ones((h, w), dtype=np.float32)
-    img = np.random.random((h, w))
+    h, w = 5, 5
+    # img = cv2.imread("data/images/img_1001.jpg", 0)[:50, :50]
+    img = np.diag(np.ones((50,)))
     res1 = cv2.GaussianBlur(img, (h, w), std)
     res2 = my_gaussian_blur(img, (h, w), std=std)
-    print()
+    cv2.imshow("img", img)
+    cv2.imshow("res1", res1)
+    cv2.imshow("res2", res2)
+    cv2.waitKey(0)
 
 
 if __name__ == '__main__':
