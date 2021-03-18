@@ -84,8 +84,8 @@ def alpha_rain(rain, img, beta=0.8):
 
 def main():
     image = cv2.imread(r"data/images/img_1001.jpg")
-    noise = get_noise(image.shape[0:2], rate=0.05)
-    rain_noise = rain_blur(noise, length=20, angle=45, w=1)
+    noise = get_noise(image.shape[0:2], rate=0.0005)
+    rain_noise = rain_blur(noise, length=20, angle=-10, w=1)
     alpha_rain(rain_noise, image)
 
 

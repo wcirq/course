@@ -66,7 +66,7 @@ def affine_matrix_example():
     # 3再将得到的坐标乘以缩放比例scale
     # 4.将（center_x,center_y）点平移到回原来的位置
     xy0 = np.array([4, 1, 1]).reshape((3, 1))
-    angle = 45
+    angle = 110
     center_x = 2
     center_y = 1
     scale = 0.5
@@ -134,7 +134,7 @@ def affine_matrix_example():
 
 def resize_image_example():
     image = cv2.imread("data/images/img_1001.jpg")
-    dst = rotate(image, 45)
+    dst = rotate(image, 80, scale=2)
     cv2.imshow("image", image)
     cv2.imshow("dst", dst)
     cv2.waitKey(0)
@@ -142,4 +142,4 @@ def resize_image_example():
 
 if __name__ == '__main__':
     affine_matrix_example()
-    # resize_image_example()
+    resize_image_example()

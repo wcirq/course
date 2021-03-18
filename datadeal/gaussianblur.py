@@ -44,13 +44,15 @@ def my_gaussian_blur(img, shape, std=1):
 def main():
     std = 1
     h, w = 5, 5
-    # img = cv2.imread("data/images/img_1001.jpg", 0)[:50, :50]
-    img = np.diag(np.ones((50,)))
+    img = cv2.imread("data/images/img_1001.jpg", 0)[:200, :200]
+    # img = np.diag(np.ones((256,)))
     res1 = cv2.GaussianBlur(img, (h, w), std)
     res2 = my_gaussian_blur(img, (h, w), std=std)
     cv2.imshow("img", img)
     cv2.imshow("res1", res1)
     cv2.imshow("res2", res2)
+    # cv2.imwrite("img.jpg", (img*255).astype(np.uint8))
+    # cv2.imwrite("res.jpg", (res1*255).astype(np.uint8))
     cv2.waitKey(0)
 
 
