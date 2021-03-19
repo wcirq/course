@@ -4,10 +4,35 @@
 # @Author wcirq
 # @Software PyCharm
 # @Site
+import itertools
+
 import cv2
 import numpy as np
 import pylab as pl
 from matplotlib import collections as mc, pyplot as plt
+
+
+def my_warp_affine_nearest_neighbor(image, matrix):
+    if matrix.shape[0] == 2:
+        matrix = np.concatenate((matrix, np.array([0, 0, 1]).reshape((1, 3))), axis=0)
+    h, w, _ = image.shape
+    empty_image = np.zeros_like(image, dtype=np.uint8)
+    matrix_inv = np.linalg.inv(matrix)
+    x, y = np.meshgrid(np.arange(0, w), np.arange(0, h))
+    x = np.expand_dims(x, axis=2)
+    y = np.expand_dims(y, axis=2)
+    homogeneous = np.ones((h, w, 1), dtype=x.dtype)
+    xy1 = np.concatenate((x, y, homogeneous), axis=2)
+    xy1 = xy1.reshape((-1, 3)).T
+    xy0 = np.dot(matrix_inv, xy1).T
+    x = x.reshape((-1,))
+    y = y.reshape((-1,))
+    for (ix, iy, _), i, j in zip(xy0, y, x):
+        ix, iy, _ = np.dot(matrix_inv, np.array([j, i, 1]).reshape((3, 1)))[:, 0]
+        index_x, index_y = int(ix+0.5), int(iy+0.5)
+        index_x, index_y = min(max(int(index_x), 0), w-1), min(max(int(index_y), 0), h-1)
+        empty_image[i, j, :] = image[index_y, index_x, :]
+    return empty_image
 
 
 def rotate(image, angle, scale=0.5):
@@ -53,7 +78,8 @@ def rotate(image, angle, scale=0.5):
     matrix2 = cv2.getRotationMatrix2D((center_x, center_y), angle, scale)  # 获取旋转矩阵(旋转中心(pt), 旋转角度(angle)， 缩放系数(scale)
     # assert (matrix - matrix2).sum() < 0e-5, "仿射矩阵不一样"  # 断言一下两种方式生成的仿射矩阵是否一样
     # 进行仿射变换 参数：（输入图像, 2X3的变换矩阵, 指定图像输出尺寸, 插值算法标识符, 边界填充BORDER_REPLICATE)
-    dst = cv2.warpAffine(image, matrix, image.shape[:2][::-1], cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
+    # dst = cv2.warpAffine(image, matrix, image.shape[:2][::-1], cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
+    dst = my_warp_affine_nearest_neighbor(image, matrix)
     return dst
 
 
@@ -123,7 +149,7 @@ def affine_matrix_example():
     fig, ax = pl.subplots()
     ax.add_collection(lc)
     # 显示三个点的坐标
-    plt.text(center_x-0.5, center_y-0.5, (center_x, center_y), color='b')
+    plt.text(center_x - 0.5, center_y - 0.5, (center_x, center_y), color='b')
     plt.text(x0, y0, (x0, y0), color='r')
     plt.text(x1, y1, (x1, y1), color='g')
     # 设置横纵坐标轴的最小值和最大值
@@ -134,12 +160,12 @@ def affine_matrix_example():
 
 def resize_image_example():
     image = cv2.imread("data/images/img_1001.jpg")
-    dst = rotate(image, 80, scale=2)
+    dst = rotate(image, 45, scale=1.0)
     cv2.imshow("image", image)
     cv2.imshow("dst", dst)
     cv2.waitKey(0)
 
 
 if __name__ == '__main__':
-    affine_matrix_example()
+    # affine_matrix_example()
     resize_image_example()
