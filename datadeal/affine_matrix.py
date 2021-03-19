@@ -122,7 +122,7 @@ def rotate(image, angle, scale=0.5):
     # assert (matrix - matrix2).sum() < 0e-5, "仿射矩阵不一样"  # 断言一下两种方式生成的仿射矩阵是否一样
     # 进行仿射变换 参数：（输入图像, 2X3的变换矩阵, 指定图像输出尺寸, 插值算法标识符, 边界填充BORDER_REPLICATE)
     # dst = cv2.warpAffine(image, matrix, image.shape[:2][::-1], cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
-    dst = my_warp_affine_nearest_neighbor(image, matrix, border_constant=False)
+    dst = my_warp_affine_nearest_neighbor(image, matrix, border_constant=True)
     return dst
 
 
@@ -201,11 +201,26 @@ def affine_matrix_example():
     plt.show()
 
 
+def build_image(image_shape, k_w=30, k_h=30, color=(255, 255, 255)):
+    h, w, c = image_shape
+    img = np.zeros(image_shape, dtype=np.uint8)
+    for i in range(h//k_h):
+        cv2.line(img, (0, (i+1)*k_h), (w, (i+1)*k_h), color)
+    for i in range(w//k_w):
+        cv2.line(img, ((i + 1) * k_w, 0), ((i + 1) * k_w, w), color)
+    return img
+
+
 def resize_image_example():
     image = cv2.imread("data/images/img_1001.jpg")
+    image = build_image((300, 300, 3))
     dst = rotate(image, 45, scale=1.0)
     cv2.imshow("image", image)
     cv2.imshow("dst", dst)
+    dst[..., 0][dst[..., 0]==255] = 0
+    dst[..., 1][dst[..., 1]==255] = 255
+    dst[..., 2][dst[..., 2]==255] = 0
+    cv2.imshow("conc", (image*0.5+dst*0.5).astype(np.uint8))
     cv2.waitKey(0)
 
 
