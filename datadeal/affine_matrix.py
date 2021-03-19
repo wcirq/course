@@ -36,12 +36,14 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
     # 计算变换后的图片像素索引对应的原来图片像素索引
     xy0 = np.dot(matrix_inv, xy1).T
     start = time.time()
-    # -------- 利用numpy实现实现最近邻 --------
+    # -------- 利用numpy实现实现最近邻(会快很多) --------
+    # 利用四舍五入实现最近邻
     index = np.round(xy0.T).astype(np.int32)[:2, :]
     beyond = None
     if border_constant:
         # 若边界填充0，先记录下超出范围的坐标
         beyond = np.where((index < 0) | (index[0, :] > w-1)|(index[1, :] > h-1))
+    # 将超出原始图片坐标范围的点全部用最近的点表示
     index[0] = np.clip(index[0], a_min=0, a_max=w - 1)
     index[1] = np.clip(index[1], a_min=0, a_max=h - 1)
     empty_image = image[index[1], index[0], :]
@@ -51,7 +53,7 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
     empty_image = empty_image.reshape((h, w, c))
     # -------- 利用numpy实现实现最近邻 --------
 
-    # -------- 迭代实现最近邻 --------
+    # -------- 迭代实现最近邻(会慢很多) --------
     # empty_image = np.zeros_like(image, dtype=np.uint8)
     # # 将变换后图片的所有点的x和y索引转为1维
     # x = x.reshape((-1,))
@@ -120,7 +122,7 @@ def rotate(image, angle, scale=0.5):
     # assert (matrix - matrix2).sum() < 0e-5, "仿射矩阵不一样"  # 断言一下两种方式生成的仿射矩阵是否一样
     # 进行仿射变换 参数：（输入图像, 2X3的变换矩阵, 指定图像输出尺寸, 插值算法标识符, 边界填充BORDER_REPLICATE)
     # dst = cv2.warpAffine(image, matrix, image.shape[:2][::-1], cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
-    dst = my_warp_affine_nearest_neighbor(image, matrix)
+    dst = my_warp_affine_nearest_neighbor(image, matrix, border_constant=False)
     return dst
 
 
