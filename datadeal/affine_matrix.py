@@ -39,15 +39,19 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
     # 将变换后图片的所有点的x和y索引转为1维
     x = x.reshape((-1,))
     y = y.reshape((-1,))
-    # 迭代
+    # 迭代实现最近邻
     for (ix, iy, _), i, j in zip(xy0, y, x):
         index_x, index_y = int(ix + 0.5), int(iy + 0.5)
         if 0 < index_x < w and 0 < index_y < h:
+            # 若坐标落在原始图片上
             value = image[index_y, index_x, :]
         else:
+            # 若坐标落在原始图片外
             if border_constant:
+                # 用0填充
                 value = np.zeros_like(image[0, 0, :])
             else:
+                # 用最接近的值填充（即图片边缘的像素值）
                 index_x, index_y = max(min(index_x, w - 1), 0), max(min(index_y, h - 1), 0)
                 value = image[index_y, index_x, :]
         empty_image[i, j, :] = value
