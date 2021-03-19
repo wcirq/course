@@ -23,8 +23,7 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
     """
     if matrix.shape[0] == 2:
         matrix = np.concatenate((matrix, np.array([0, 0, 1]).reshape((1, 3))), axis=0)
-    h, w, _ = image.shape
-    empty_image = np.zeros_like(image, dtype=np.uint8)
+    h, w, c = image.shape
     # 求matrix得逆矩阵
     matrix_inv = np.linalg.inv(matrix)
     # 生成变换后图片的所有点的索引 shape [3, h*w]
@@ -36,25 +35,44 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
     xy1 = xy1.reshape((-1, 3)).T
     # 计算变换后的图片像素索引对应的原来图片像素索引
     xy0 = np.dot(matrix_inv, xy1).T
-    # 将变换后图片的所有点的x和y索引转为1维
-    x = x.reshape((-1,))
-    y = y.reshape((-1,))
-    # 迭代实现最近邻
-    for (ix, iy, _), i, j in zip(xy0, y, x):
-        index_x, index_y = int(ix + 0.5), int(iy + 0.5)
-        if 0 < index_x < w and 0 < index_y < h:
-            # 若坐标落在原始图片上
-            value = image[index_y, index_x, :]
-        else:
-            # 若坐标落在原始图片外
-            if border_constant:
-                # 用0填充
-                value = np.zeros_like(image[0, 0, :])
-            else:
-                # 用最接近的值填充（即图片边缘的像素值）
-                index_x, index_y = max(min(index_x, w - 1), 0), max(min(index_y, h - 1), 0)
-                value = image[index_y, index_x, :]
-        empty_image[i, j, :] = value
+    start = time.time()
+    # -------- 利用numpy实现实现最近邻 --------
+    index = np.round(xy0.T).astype(np.int32)[:2, :]
+    beyond = None
+    if border_constant:
+        # 若边界填充0，先记录下超出范围的坐标
+        beyond = np.where((index < 0) | (index[0, :] > w-1)|(index[1, :] > h-1))
+    index[0] = np.clip(index[0], a_min=0, a_max=w - 1)
+    index[1] = np.clip(index[1], a_min=0, a_max=h - 1)
+    empty_image = image[index[1], index[0], :]
+    if beyond is not None:
+        # 超出范围的位置置为0
+        empty_image[beyond[1], :] = 0
+    empty_image = empty_image.reshape((h, w, c))
+    # -------- 利用numpy实现实现最近邻 --------
+
+    # -------- 迭代实现最近邻 --------
+    # empty_image = np.zeros_like(image, dtype=np.uint8)
+    # # 将变换后图片的所有点的x和y索引转为1维
+    # x = x.reshape((-1,))
+    # y = y.reshape((-1,))
+    # for (ix, iy, _), i, j in zip(xy0, y, x):
+    #     index_x, index_y = int(ix + 0.5), int(iy + 0.5)
+    #     if 0 < index_x < w and 0 < index_y < h:
+    #         # 若坐标落在原始图片上
+    #         value = image[index_y, index_x, :]
+    #     else:
+    #         # 若坐标落在原始图片外
+    #         if border_constant:
+    #             # 用0填充
+    #             value = np.zeros_like(image[0, 0, :])
+    #         else:
+    #             # 用最接近的值填充（即图片边缘的像素值）
+    #             index_x, index_y = max(min(index_x, w - 1), 0), max(min(index_y, h - 1), 0)
+    #             value = image[index_y, index_x, :]
+    #     empty_image[i, j, :] = value
+    # -------- 迭代实现最近邻 --------
+    print(time.time()-start)
     return empty_image
 
 
@@ -183,7 +201,7 @@ def affine_matrix_example():
 
 def resize_image_example():
     image = cv2.imread("data/images/img_1001.jpg")
-    dst = rotate(image, 45, scale=3.0)
+    dst = rotate(image, 45, scale=1.0)
     cv2.imshow("image", image)
     cv2.imshow("dst", dst)
     cv2.waitKey(0)
