@@ -5,6 +5,7 @@
 # @Software PyCharm
 # @Site
 import itertools
+import time
 
 import cv2
 import numpy as np
@@ -12,26 +13,44 @@ import pylab as pl
 from matplotlib import collections as mc, pyplot as plt
 
 
-def my_warp_affine_nearest_neighbor(image, matrix):
+def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
+    """
+    实现最近邻插值算法
+    :param image: 待变换图片
+    :param matrix: 仿射矩阵
+    :param border_constant: True：边缘用0填充， False: 边缘用最近的值填充
+    :return:
+    """
     if matrix.shape[0] == 2:
         matrix = np.concatenate((matrix, np.array([0, 0, 1]).reshape((1, 3))), axis=0)
     h, w, _ = image.shape
     empty_image = np.zeros_like(image, dtype=np.uint8)
+    # 求matrix得逆矩阵
     matrix_inv = np.linalg.inv(matrix)
+    # 生成变换后图片的所有点的索引 shape [3, h*w]
     x, y = np.meshgrid(np.arange(0, w), np.arange(0, h))
     x = np.expand_dims(x, axis=2)
     y = np.expand_dims(y, axis=2)
     homogeneous = np.ones((h, w, 1), dtype=x.dtype)
     xy1 = np.concatenate((x, y, homogeneous), axis=2)
     xy1 = xy1.reshape((-1, 3)).T
+    # 计算变换后的图片像素索引对应的原来图片像素索引
     xy0 = np.dot(matrix_inv, xy1).T
+    # 将变换后图片的所有点的x和y索引转为1维
     x = x.reshape((-1,))
     y = y.reshape((-1,))
+    # 迭代
     for (ix, iy, _), i, j in zip(xy0, y, x):
-        ix, iy, _ = np.dot(matrix_inv, np.array([j, i, 1]).reshape((3, 1)))[:, 0]
-        index_x, index_y = int(ix+0.5), int(iy+0.5)
-        index_x, index_y = min(max(int(index_x), 0), w-1), min(max(int(index_y), 0), h-1)
-        empty_image[i, j, :] = image[index_y, index_x, :]
+        index_x, index_y = int(ix + 0.5), int(iy + 0.5)
+        if 0 < index_x < w and 0 < index_y < h:
+            value = image[index_y, index_x, :]
+        else:
+            if border_constant:
+                value = np.zeros_like(image[0, 0, :])
+            else:
+                index_x, index_y = max(min(index_x, w - 1), 0), max(min(index_y, h - 1), 0)
+                value = image[index_y, index_x, :]
+        empty_image[i, j, :] = value
     return empty_image
 
 
@@ -160,7 +179,7 @@ def affine_matrix_example():
 
 def resize_image_example():
     image = cv2.imread("data/images/img_1001.jpg")
-    dst = rotate(image, 45, scale=1.0)
+    dst = rotate(image, 45, scale=3.0)
     cv2.imshow("image", image)
     cv2.imshow("dst", dst)
     cv2.waitKey(0)
