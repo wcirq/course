@@ -179,21 +179,32 @@ def resize_image_example():
 
 
 def vedio():
+    def build_image(image_shape, k_w=30, k_h=30, color=(255, 255, 255)):
+        h, w, c = image_shape
+        img = np.zeros(image_shape, dtype=np.uint8)
+        for i in range(h // k_h):
+            cv2.line(img, (0, (i + 1) * k_h), (w, (i + 1) * k_h), color)
+        for i in range(w // k_w):
+            cv2.line(img, ((i + 1) * k_w, 0), ((i + 1) * k_w, w), color)
+        return img
+
     cap = cv2.VideoCapture(0)
     angle = 0.0
     scale = 1.0
     while True:
         start = time.time()
         ok, frame = cap.read()
+        # frame = build_image((420, 640, 3))
+        frame = cv2.imread("/home/wcirq/Pictures/meinv.jpg")
         if not ok:
             break
         frame = cv2.flip(frame, 1)
         scale = float(np.sin(angle*np.pi/180)+1.000001)
         image = tf.convert_to_tensor(frame, dtype=tf.float32)
-        image = rotate(image, angle, scale=scale, algorithm=0, border_constant=True, constant=255)
-        # image = rotate(image, angle, scale=scale, algorithm=1, border_constant=True, constant=255)
-        angle+=1
-        frame = np.hstack((frame, image.numpy().astype(np.uint8)))
+        image1 = rotate(image, angle, scale=scale, algorithm=0, border_constant=True, constant=255)
+        image2 = rotate(image, angle, scale=scale, algorithm=1, border_constant=True, constant=255)
+        angle+=0.1
+        frame = np.hstack((frame, image1.numpy().astype(np.uint8), cv2.flip(image2.numpy().astype(np.uint8), 1)))
         end =time.time()
         cv2.putText(frame, f"FPS:{1//(end-start)}", (20, 20),cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 1)
         cv2.imshow("frame", frame)
