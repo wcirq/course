@@ -104,12 +104,16 @@ def my_warp_affine_bilinear(image, matrix, border_constant=True):
 
     #--------- numpy 实现双线性插值 ------
     xy0 = xy0[:, :2]
-    min_xy = np.clip(np.floor(xy0).astype(np.int32)[:, :2], a_min=0, a_max=300-1)
-    max_xy = np.clip(np.ceil(xy0).astype(np.int32)[:, :2], a_min=0, a_max=300-1)
-    w0_xy = np.minimum(np.maximum((xy0-min_xy)/(max_xy-min_xy), 0), 1)
-    w1_xy = (max_xy-xy0)/(max_xy-min_xy)
-    r0 = w0_xy[:, 1:]*image[min_xy[:, 1], max_xy[:, 0], :]+w1_xy[:, 1:]*image[min_xy[:, 1], min_xy[:, 0], :]
-    r1 = w0_xy[:, 1:]*image[max_xy[:, 1], max_xy[:, 0], :]+w1_xy[:, 1:]*image[max_xy[:, 1], min_xy[:, 0], :]
+    min_xy = np.floor(xy0).astype(np.int32)[:, :2]
+    max_xy = min_xy+1 # 不能用 np.ceil(xy0), 因为为整数时不会向上取整
+    min_xy[:, 0] = np.clip(min_xy[:, 0], a_min=0, a_max=w-1)
+    min_xy[:, 1] = np.clip(min_xy[:, 1], a_min=0, a_max=h-1)
+    max_xy[:, 0] = np.clip(max_xy[:, 0], a_min=0, a_max=w-1)
+    max_xy[:, 1] = np.clip(max_xy[:, 1], a_min=0, a_max=h-1)
+    w0_xy = (xy0-min_xy)/np.clip(max_xy-min_xy, a_min=0, a_max=1)
+    w1_xy = (max_xy-xy0)/np.clip(max_xy-min_xy, a_min=0, a_max=1)
+    r0 = w0_xy[:, :1]*image[min_xy[:, 1], max_xy[:, 0], :]+w1_xy[:, :1]*image[min_xy[:, 1], min_xy[:, 0], :]
+    r1 = w0_xy[:, :1]*image[max_xy[:, 1], max_xy[:, 0], :]+w1_xy[:, :1]*image[max_xy[:, 1], min_xy[:, 0], :]
     r2 = w0_xy[:, 1:]*r1+w1_xy[:, 1:]*r0
     empty_image = r2.reshape((h, w, c)).astype(np.uint8)
     #--------- numpy 实现双线性插值 ------
@@ -269,9 +273,9 @@ def build_image(image_shape, k_w=30, k_h=30, color=(255, 255, 255)):
 
 
 def resize_image_example():
-    image = cv2.imread("data/images/img_1001.jpg")[:300, :300, :]
+    image = cv2.imread("data/images/img_1001.jpg")
     # image = build_image((300, 300, 3))
-    dst = rotate(image, 45, scale=1.0)
+    dst = rotate(image, 111, scale=1.0)
     cv2.imshow("image", image)
     cv2.imshow("dst", dst)
     # dst[..., 0][dst[..., 0] == 255] = 0
