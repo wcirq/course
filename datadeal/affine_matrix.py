@@ -42,7 +42,7 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
     beyond = None
     if border_constant:
         # 若边界填充0，先记录下超出范围的坐标
-        beyond = np.where((index < 0) | (index[0, :] > w-1)|(index[1, :] > h-1))
+        beyond = np.where((index < 0) | (index[0, :] > w - 1) | (index[1, :] > h - 1))
     # 将超出原始图片坐标范围的点全部用最近的点表示
     index[0] = np.clip(index[0], a_min=0, a_max=w - 1)
     index[1] = np.clip(index[1], a_min=0, a_max=h - 1)
@@ -74,7 +74,51 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
     #             value = image[index_y, index_x, :]
     #     empty_image[i, j, :] = value
     # -------- 迭代实现最近邻 --------
-    print(time.time()-start)
+    print(time.time() - start)
+    return empty_image
+
+
+def my_warp_affine_bilinear(image, matrix, border_constant=True):
+    """
+    实现双线性插值算法
+    :param image: 待变换图片
+    :param matrix: 仿射矩阵
+    :param border_constant: True：边缘用0填充， False: 边缘用最近的值填充
+    :return:
+    """
+    if matrix.shape[0] == 2:
+        matrix = np.concatenate((matrix, np.array([0, 0, 1]).reshape((1, 3))), axis=0)
+    h, w, c = image.shape
+    # 求matrix得逆矩阵
+    matrix_inv = np.linalg.inv(matrix)
+    # 生成变换后图片的所有点的索引 shape [3, h*w]
+    x, y = np.meshgrid(np.arange(0, w), np.arange(0, h))
+    x = np.expand_dims(x, axis=2)
+    y = np.expand_dims(y, axis=2)
+    homogeneous = np.ones((h, w, 1), dtype=x.dtype)
+    xy1 = np.concatenate((x, y, homogeneous), axis=2)
+    xy1 = xy1.reshape((-1, 3)).T
+    # 计算变换后的图片像素索引对应的原来图片像素索引
+    xy0 = np.dot(matrix_inv, xy1).T
+    start = time.time()
+
+    # -------- 迭代实现双线性插值--------
+    empty_image = np.zeros_like(image, dtype=np.uint8)
+    # 将变换后图片的所有点的x和y索引转为1维
+    x = x.reshape((-1,))
+    y = y.reshape((-1,))
+    for (ix, iy, _), i, j in zip(xy0, y, x):
+        min_x, max_x = int(np.floor(ix)), int(np.ceil(ix))
+        min_y, max_y = int(np.floor(iy)), int(np.ceil(iy))
+        if ix < 0 or ix > w - 1 or iy < 0 or iy > h - 1:
+            empty_image[i, j, :] = np.zeros_like(image[0, 0, :])
+            continue
+        r0 = (ix - min_x) / (max_x - min_x) * image[min_y, max_x, :] + (max_x - ix) / (max_x - min_x) * image[min_y, min_x, :]
+        r1 = (ix - min_x) / (max_x - min_x) * image[max_y, max_x, :] + (max_x - ix) / (max_x - min_x) * image[max_y, min_x, :]
+        r3 = (iy - min_y) / (max_y - min_y) * r1 + (max_y - iy) / (max_y - min_y) * r0
+        empty_image[i, j, :] = r3
+    # -------- 迭代实现双线性插值 --------
+    print(time.time() - start)
     return empty_image
 
 
@@ -122,7 +166,8 @@ def rotate(image, angle, scale=0.5):
     # assert (matrix - matrix2).sum() < 0e-5, "仿射矩阵不一样"  # 断言一下两种方式生成的仿射矩阵是否一样
     # 进行仿射变换 参数：（输入图像, 2X3的变换矩阵, 指定图像输出尺寸, 插值算法标识符, 边界填充BORDER_REPLICATE)
     # dst = cv2.warpAffine(image, matrix, image.shape[:2][::-1], cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
-    dst = my_warp_affine_nearest_neighbor(image, matrix, border_constant=True)
+    # dst = my_warp_affine_nearest_neighbor(image, matrix, border_constant=True)
+    dst = my_warp_affine_bilinear(image, matrix, border_constant=True)
     return dst
 
 
@@ -204,23 +249,23 @@ def affine_matrix_example():
 def build_image(image_shape, k_w=30, k_h=30, color=(255, 255, 255)):
     h, w, c = image_shape
     img = np.zeros(image_shape, dtype=np.uint8)
-    for i in range(h//k_h):
-        cv2.line(img, (0, (i+1)*k_h), (w, (i+1)*k_h), color)
-    for i in range(w//k_w):
+    for i in range(h // k_h):
+        cv2.line(img, (0, (i + 1) * k_h), (w, (i + 1) * k_h), color)
+    for i in range(w // k_w):
         cv2.line(img, ((i + 1) * k_w, 0), ((i + 1) * k_w, w), color)
     return img
 
 
 def resize_image_example():
-    image = cv2.imread("data/images/img_1001.jpg")
+    # image = cv2.imread("data/images/img_1001.jpg")
     image = build_image((300, 300, 3))
-    dst = rotate(image, 45, scale=1.0)
+    dst = rotate(image, 80, scale=1.0)
     cv2.imshow("image", image)
     cv2.imshow("dst", dst)
-    dst[..., 0][dst[..., 0]==255] = 0
-    dst[..., 1][dst[..., 1]==255] = 255
-    dst[..., 2][dst[..., 2]==255] = 0
-    cv2.imshow("conc", (image*0.5+dst*0.5).astype(np.uint8))
+    dst[..., 0][dst[..., 0] == 255] = 0
+    dst[..., 1][dst[..., 1] == 255] = 255
+    dst[..., 2][dst[..., 2] == 255] = 0
+    cv2.imshow("conc", (image * 0.5 + dst * 0.5).astype(np.uint8))
     cv2.waitKey(0)
 
 
