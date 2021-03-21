@@ -114,8 +114,8 @@ def my_warp_affine_bilinear(image, matrix, border_constant=True, constant=0):
     min_xy[:, 1] = np.clip(min_xy[:, 1], a_min=0, a_max=h-1)
     max_xy[:, 0] = np.clip(max_xy[:, 0], a_min=0, a_max=w-1)
     max_xy[:, 1] = np.clip(max_xy[:, 1], a_min=0, a_max=h-1)
-    w0_xy = (xy0-min_xy)/np.clip(max_xy-min_xy, a_min=0, a_max=1)
-    w1_xy = (max_xy-xy0)/np.clip(max_xy-min_xy, a_min=0, a_max=1)
+    w0_xy = (xy0-min_xy)/(max_xy-min_xy)
+    w1_xy = (max_xy-xy0)/(max_xy-min_xy)
     r0 = w0_xy[:, :1]*image[min_xy[:, 1], max_xy[:, 0], :]+w1_xy[:, :1]*image[min_xy[:, 1], min_xy[:, 0], :]
     r1 = w0_xy[:, :1]*image[max_xy[:, 1], max_xy[:, 0], :]+w1_xy[:, :1]*image[max_xy[:, 1], min_xy[:, 0], :]
     r2 = w0_xy[:, 1:]*r1+w1_xy[:, 1:]*r0
@@ -145,7 +145,7 @@ def my_warp_affine_bilinear(image, matrix, border_constant=True, constant=0):
     return empty_image
 
 
-def rotate(image, angle, scale=0.5, algorithm=0):
+def rotate(image, angle, scale=0.5, algorithm=0, border_constant=True, constant=0):
     """
     图片绕图片中心点旋转指定角度
     :param image: 待旋转的图片
@@ -191,9 +191,9 @@ def rotate(image, angle, scale=0.5, algorithm=0):
     # 进行仿射变换 参数：（输入图像, 2X3的变换矩阵, 指定图像输出尺寸, 插值算法标识符, 边界填充BORDER_REPLICATE)
     # dst = cv2.warpAffine(image, matrix, image.shape[:2][::-1], cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
     if algorithm==0:
-        dst = my_warp_affine_nearest_neighbor(image, matrix, border_constant=True, constant=127)
+        dst = my_warp_affine_nearest_neighbor(image, matrix, border_constant=border_constant, constant=constant)
     else:
-        dst = my_warp_affine_bilinear(image, matrix, border_constant=True, constant=127)
+        dst = my_warp_affine_bilinear(image, matrix, border_constant=border_constant, constant=constant)
     return dst
 
 
@@ -284,9 +284,10 @@ def build_image(image_shape, k_w=30, k_h=30, color=(255, 255, 255)):
 
 def resize_image_example():
     # image = cv2.imread("data/images/img_1001.jpg")
-    image = build_image((300, 300, 3))
-    dst1 = rotate(image, 45, scale=1.0, algorithm=0)
-    dst2 = rotate(image, 45, scale=1.0, algorithm=1)
+    image = cv2.imread("/home/wcirq/Pictures/meinv.jpg")
+    # image = build_image((300, 300, 3))
+    dst1 = rotate(image, -120, scale=0.5, algorithm=0, border_constant=True, constant=255)
+    dst2 = rotate(image, -120, scale=0.5, algorithm=1, border_constant=True, constant=255)
     cv2.imshow("image", image)
     cv2.imshow("dst1", dst1)
     cv2.imshow("dst2", dst2)
