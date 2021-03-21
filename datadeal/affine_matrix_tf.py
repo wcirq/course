@@ -49,7 +49,7 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True, constan
         empty_image = tf.where(condition[:, tf.newaxis], x=beyond_image, y=empty_image)
     empty_image = tf.reshape(empty_image, (h, w, c))
     # -------- 利用tensorflow实现实现最近邻 --------
-    print(time.time() - start)
+    # print(time.time() - start)
     return empty_image
 
 
@@ -110,7 +110,7 @@ def my_warp_affine_bilinear(image, matrix, border_constant=True, constant=0):
     empty_image = tf.reshape(empty_image, (h, w, c))
     empty_image = tf.cast(empty_image, dtype=tf.uint8)
     # --------- tensorflow 实现双线性插值 ------
-    print(time.time() - start)
+    # print(time.time() - start)
     return empty_image
 
 
@@ -178,5 +178,28 @@ def resize_image_example():
     cv2.waitKey(0)
 
 
+def vedio():
+    cap = cv2.VideoCapture(0)
+    angle = 0.0
+    scale = 1.0
+    while True:
+        start = time.time()
+        ok, frame = cap.read()
+        if not ok:
+            break
+        frame = cv2.flip(frame, 1)
+        scale = float(np.sin(angle*np.pi/180)+1.000001)
+        image = tf.convert_to_tensor(frame, dtype=tf.float32)
+        image = rotate(image, angle, scale=scale, algorithm=0, border_constant=True, constant=255)
+        # image = rotate(image, angle, scale=scale, algorithm=1, border_constant=True, constant=255)
+        angle+=1
+        frame = np.hstack((frame, image.numpy().astype(np.uint8)))
+        end =time.time()
+        cv2.putText(frame, f"FPS:{1//(end-start)}", (20, 20),cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 1)
+        cv2.imshow("frame", frame)
+        cv2.waitKey(1)
+
+
 if __name__ == '__main__':
-    resize_image_example()
+    # resize_image_example()
+    vedio()

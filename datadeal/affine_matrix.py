@@ -192,8 +192,10 @@ def rotate(image, angle, scale=0.5, algorithm=0, border_constant=True, constant=
     # dst = cv2.warpAffine(image, matrix, image.shape[:2][::-1], cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
     if algorithm==0:
         dst = my_warp_affine_nearest_neighbor(image, matrix, border_constant=border_constant, constant=constant)
-    else:
+    elif algorithm==1:
         dst = my_warp_affine_bilinear(image, matrix, border_constant=border_constant, constant=constant)
+    else:
+        dst = cv2.warpAffine(image, matrix, image.shape[:2][::-1], cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
     return dst
 
 
@@ -288,12 +290,38 @@ def resize_image_example():
     # image = build_image((300, 300, 3))
     dst1 = rotate(image, -120, scale=0.5, algorithm=0, border_constant=True, constant=255)
     dst2 = rotate(image, -120, scale=0.5, algorithm=1, border_constant=True, constant=255)
+    dst3 = rotate(image, -120, scale=0.5, algorithm=2, border_constant=True, constant=255)
     cv2.imshow("image", image)
     cv2.imshow("dst1", dst1)
     cv2.imshow("dst2", dst2)
+    cv2.imshow("dst2", dst3)
     cv2.waitKey(0)
+
+
+def vedio():
+    cap = cv2.VideoCapture(0)
+    angle = 0.0
+    scale = 1.0
+    while True:
+        start = time.time()
+        ok, frame = cap.read()
+        if not ok:
+            break
+        image = cv2.flip(frame, 1)
+        scale = float(np.sin(angle*np.pi/180)+1.000001)
+        # image = rotate(image, angle, scale=scale, algorithm=0, border_constant=True, constant=255)
+        image = rotate(image, angle, scale=scale, algorithm=1, border_constant=True, constant=255)
+        # image = rotate(image, angle, scale=scale, algorithm=2, border_constant=True, constant=255)
+        angle+=1
+        frame = np.hstack((frame, image))
+        end =time.time()
+        cv2.putText(frame, f"FPS:{1//(end-start)}", (20, 20),cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 1)
+        cv2.imshow("frame", frame)
+        cv2.waitKey(1)
+
 
 
 if __name__ == '__main__':
     # affine_matrix_example()
-    resize_image_example()
+    # resize_image_example()
+    vedio()
