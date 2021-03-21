@@ -13,7 +13,7 @@ import pylab as pl
 from matplotlib import collections as mc, pyplot as plt
 
 
-def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
+def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True, constant=0):
     """
     实现最近邻插值算法
     :param image: 待变换图片
@@ -49,7 +49,7 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
     empty_image = image[index[1], index[0], :]
     if beyond is not None:
         # 超出范围的位置置为0
-        empty_image[beyond[1], :] = 0
+        empty_image[beyond[1], :] = constant
     empty_image = empty_image.reshape((h, w, c))
     # -------- 利用numpy实现实现最近邻 --------
 
@@ -78,7 +78,7 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True):
     return empty_image
 
 
-def my_warp_affine_bilinear(image, matrix, border_constant=True):
+def my_warp_affine_bilinear(image, matrix, border_constant=True, constant=0):
     """
     实现双线性插值算法
     :param image: 待变换图片
@@ -104,6 +104,10 @@ def my_warp_affine_bilinear(image, matrix, border_constant=True):
 
     #--------- numpy 实现双线性插值 ------
     xy0 = xy0[:, :2]
+    beyond = None
+    if border_constant:
+        # 若边界填充0，先记录下超出范围的坐标
+        beyond = np.where((xy0 < 0) | (xy0[:, :1] > w - 1) | (xy0[:, 1:] > h - 1))
     min_xy = np.floor(xy0).astype(np.int32)[:, :2]
     max_xy = min_xy+1 # 不能用 np.ceil(xy0), 因为为整数时不会向上取整
     min_xy[:, 0] = np.clip(min_xy[:, 0], a_min=0, a_max=w-1)
@@ -115,6 +119,9 @@ def my_warp_affine_bilinear(image, matrix, border_constant=True):
     r0 = w0_xy[:, :1]*image[min_xy[:, 1], max_xy[:, 0], :]+w1_xy[:, :1]*image[min_xy[:, 1], min_xy[:, 0], :]
     r1 = w0_xy[:, :1]*image[max_xy[:, 1], max_xy[:, 0], :]+w1_xy[:, :1]*image[max_xy[:, 1], min_xy[:, 0], :]
     r2 = w0_xy[:, 1:]*r1+w1_xy[:, 1:]*r0
+    if beyond is not None:
+        # 超出范围的位置置为0
+        r2[beyond[0], :] = constant
     empty_image = r2.reshape((h, w, c)).astype(np.uint8)
     #--------- numpy 实现双线性插值 ------
 
@@ -138,11 +145,12 @@ def my_warp_affine_bilinear(image, matrix, border_constant=True):
     return empty_image
 
 
-def rotate(image, angle, scale=0.5):
+def rotate(image, angle, scale=0.5, algorithm=0):
     """
     图片绕图片中心点旋转指定角度
     :param image: 待旋转的图片
     :param angle: 旋转角度 （顺时针方向为正）
+    :param algorithm: 使用的填充算法 0-最近邻 1-双线性插值
     :return:
     """
     center_x, center_y = image.shape[1] / 2., image.shape[0] / 2.
@@ -182,8 +190,10 @@ def rotate(image, angle, scale=0.5):
     # assert (matrix - matrix2).sum() < 0e-5, "仿射矩阵不一样"  # 断言一下两种方式生成的仿射矩阵是否一样
     # 进行仿射变换 参数：（输入图像, 2X3的变换矩阵, 指定图像输出尺寸, 插值算法标识符, 边界填充BORDER_REPLICATE)
     # dst = cv2.warpAffine(image, matrix, image.shape[:2][::-1], cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
-    # dst = my_warp_affine_nearest_neighbor(image, matrix, border_constant=True)
-    dst = my_warp_affine_bilinear(image, matrix, border_constant=True)
+    if algorithm==0:
+        dst = my_warp_affine_nearest_neighbor(image, matrix, border_constant=True, constant=127)
+    else:
+        dst = my_warp_affine_bilinear(image, matrix, border_constant=True, constant=127)
     return dst
 
 
@@ -273,15 +283,13 @@ def build_image(image_shape, k_w=30, k_h=30, color=(255, 255, 255)):
 
 
 def resize_image_example():
-    image = cv2.imread("data/images/img_1001.jpg")
-    # image = build_image((300, 300, 3))
-    dst = rotate(image, 111, scale=1.0)
+    # image = cv2.imread("data/images/img_1001.jpg")
+    image = build_image((300, 300, 3))
+    dst1 = rotate(image, 45, scale=1.0, algorithm=0)
+    dst2 = rotate(image, 45, scale=1.0, algorithm=1)
     cv2.imshow("image", image)
-    cv2.imshow("dst", dst)
-    # dst[..., 0][dst[..., 0] == 255] = 0
-    # dst[..., 1][dst[..., 1] == 255] = 255
-    # dst[..., 2][dst[..., 2] == 255] = 0
-    # cv2.imshow("conc", (image * 0.5 + dst * 0.5).astype(np.uint8))
+    cv2.imshow("dst1", dst1)
+    cv2.imshow("dst2", dst2)
     cv2.waitKey(0)
 
 
