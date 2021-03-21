@@ -102,21 +102,33 @@ def my_warp_affine_bilinear(image, matrix, border_constant=True):
     xy0 = np.dot(matrix_inv, xy1).T
     start = time.time()
 
+    #--------- numpy 实现双线性插值 ------
+    xy0 = xy0[:, :2]
+    min_xy = np.clip(np.floor(xy0).astype(np.int32)[:, :2], a_min=0, a_max=300-1)
+    max_xy = np.clip(np.ceil(xy0).astype(np.int32)[:, :2], a_min=0, a_max=300-1)
+    w0_xy = np.minimum(np.maximum((xy0-min_xy)/(max_xy-min_xy), 0), 1)
+    w1_xy = (max_xy-xy0)/(max_xy-min_xy)
+    r0 = w0_xy[:, 1:]*image[min_xy[:, 1], max_xy[:, 0], :]+w1_xy[:, 1:]*image[min_xy[:, 1], min_xy[:, 0], :]
+    r1 = w0_xy[:, 1:]*image[max_xy[:, 1], max_xy[:, 0], :]+w1_xy[:, 1:]*image[max_xy[:, 1], min_xy[:, 0], :]
+    r2 = w0_xy[:, 1:]*r1+w1_xy[:, 1:]*r0
+    empty_image = r2.reshape((h, w, c)).astype(np.uint8)
+    #--------- numpy 实现双线性插值 ------
+
     # -------- 迭代实现双线性插值--------
-    empty_image = np.zeros_like(image, dtype=np.uint8)
-    # 将变换后图片的所有点的x和y索引转为1维
-    x = x.reshape((-1,))
-    y = y.reshape((-1,))
-    for (ix, iy, _), i, j in zip(xy0, y, x):
-        min_x, max_x = int(np.floor(ix)), int(np.ceil(ix))
-        min_y, max_y = int(np.floor(iy)), int(np.ceil(iy))
-        if ix < 0 or ix > w - 1 or iy < 0 or iy > h - 1:
-            empty_image[i, j, :] = np.zeros_like(image[0, 0, :])
-            continue
-        r0 = (ix - min_x) / (max_x - min_x) * image[min_y, max_x, :] + (max_x - ix) / (max_x - min_x) * image[min_y, min_x, :]
-        r1 = (ix - min_x) / (max_x - min_x) * image[max_y, max_x, :] + (max_x - ix) / (max_x - min_x) * image[max_y, min_x, :]
-        r3 = (iy - min_y) / (max_y - min_y) * r1 + (max_y - iy) / (max_y - min_y) * r0
-        empty_image[i, j, :] = r3
+    # empty_image = np.zeros_like(image, dtype=np.uint8)
+    # # 将变换后图片的所有点的x和y索引转为1维
+    # x = x.reshape((-1,))
+    # y = y.reshape((-1,))
+    # for (ix, iy, _), i, j in zip(xy0, y, x):
+    #     min_x, max_x = int(np.floor(ix)), int(np.ceil(ix))
+    #     min_y, max_y = int(np.floor(iy)), int(np.ceil(iy))
+    #     if ix < 0 or ix > w - 1 or iy < 0 or iy > h - 1:
+    #         empty_image[i, j, :] = np.zeros_like(image[0, 0, :])
+    #         continue
+    #     r0 = (ix - min_x) / (max_x - min_x) * image[min_y, max_x, :] + (max_x - ix) / (max_x - min_x) * image[min_y, min_x, :]
+    #     r1 = (ix - min_x) / (max_x - min_x) * image[max_y, max_x, :] + (max_x - ix) / (max_x - min_x) * image[max_y, min_x, :]
+    #     r2 = (iy - min_y) / (max_y - min_y) * r1 + (max_y - iy) / (max_y - min_y) * r0
+    #     empty_image[i, j, :] = r2
     # -------- 迭代实现双线性插值 --------
     print(time.time() - start)
     return empty_image
@@ -257,15 +269,15 @@ def build_image(image_shape, k_w=30, k_h=30, color=(255, 255, 255)):
 
 
 def resize_image_example():
-    # image = cv2.imread("data/images/img_1001.jpg")
-    image = build_image((300, 300, 3))
-    dst = rotate(image, 80, scale=1.0)
+    image = cv2.imread("data/images/img_1001.jpg")[:300, :300, :]
+    # image = build_image((300, 300, 3))
+    dst = rotate(image, 45, scale=1.0)
     cv2.imshow("image", image)
     cv2.imshow("dst", dst)
-    dst[..., 0][dst[..., 0] == 255] = 0
-    dst[..., 1][dst[..., 1] == 255] = 255
-    dst[..., 2][dst[..., 2] == 255] = 0
-    cv2.imshow("conc", (image * 0.5 + dst * 0.5).astype(np.uint8))
+    # dst[..., 0][dst[..., 0] == 255] = 0
+    # dst[..., 1][dst[..., 1] == 255] = 255
+    # dst[..., 2][dst[..., 2] == 255] = 0
+    # cv2.imshow("conc", (image * 0.5 + dst * 0.5).astype(np.uint8))
     cv2.waitKey(0)
 
 
