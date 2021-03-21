@@ -45,7 +45,7 @@ def my_warp_affine_nearest_neighbor(image, matrix, border_constant=True, constan
     if border_constant:
         bool_beyond = ((index < 0) | (index[0, :] > w - 1) | (index[1, :] > h - 1))
         condition = tf.logical_or(bool_beyond[0, :], bool_beyond[1, :])
-        beyond_image = tf.ones_like(empty_image, dtype=tf.float32)*constant
+        beyond_image = tf.ones_like(empty_image, dtype=tf.float32) * constant
         empty_image = tf.where(condition[:, tf.newaxis], x=beyond_image, y=empty_image)
     empty_image = tf.reshape(empty_image, (h, w, c))
     # -------- 利用tensorflow实现实现最近邻 --------
@@ -105,7 +105,7 @@ def my_warp_affine_bilinear(image, matrix, border_constant=True, constant=0):
     if border_constant:
         bool_beyond = ((xy0 < 0) | (xy0[:, :1] > w - 1) | (xy0[:, 1:] > h - 1))
         condition = tf.logical_or(bool_beyond[:, 0], bool_beyond[:, 1])
-        beyond_image = tf.ones_like(empty_image, dtype=tf.float32)*constant
+        beyond_image = tf.ones_like(empty_image, dtype=tf.float32) * constant
         empty_image = tf.where(condition[:, tf.newaxis], x=beyond_image, y=empty_image)
     empty_image = tf.reshape(empty_image, (h, w, c))
     empty_image = tf.cast(empty_image, dtype=tf.uint8)
@@ -180,11 +180,14 @@ def resize_image_example():
 
 def vedio():
     def build_image(image_shape, k_w=30, k_h=30, color=(255, 255, 255)):
+        # np.random.seed(1)
         h, w, c = image_shape
         img = np.zeros(image_shape, dtype=np.uint8)
         for i in range(h // k_h):
+            color = [int(i) for i in np.random.randint(0, 255, (3,))]
             cv2.line(img, (0, (i + 1) * k_h), (w, (i + 1) * k_h), color)
         for i in range(w // k_w):
+            color = [int(i) for i in np.random.randint(0, 255, (3,))]
             cv2.line(img, ((i + 1) * k_w, 0), ((i + 1) * k_w, w), color)
         return img
 
@@ -195,18 +198,28 @@ def vedio():
         start = time.time()
         ok, frame = cap.read()
         # frame = build_image((420, 640, 3))
-        frame = cv2.imread("/home/wcirq/Pictures/meinv.jpg")
+        # frame = cv2.imread("/home/wcirq/Pictures/meinv.jpg")
         if not ok:
             break
-        frame = cv2.flip(frame, 1)
-        scale = float(np.sin(angle*np.pi/180)+1.000001)
+        # frame = cv2.flip(frame, 1)
+        # scale = float(np.sin(angle * np.pi / 180) + 1.000001)
         image = tf.convert_to_tensor(frame, dtype=tf.float32)
+        # image = tf.image.random_flip_left_right(image)
+        image = image[:, ::-1, :]
+        # image = tf.image.resize_with_crop_or_pad(image, 700, 700)
+        # image = tf.image.random_crop(image, (300, 300, 3))
+        # image = tf.image.random_brightness(image, 120)
+        # image = tf.image.random_contrast(image,lower=0.2,upper=1.8)
+        image = tf.image.crop_to_bounding_box(image, 100, 0, 320, 200)
         image1 = rotate(image, angle, scale=scale, algorithm=0, border_constant=True, constant=255)
         image2 = rotate(image, angle, scale=scale, algorithm=1, border_constant=True, constant=255)
-        angle+=0.1
+        angle += 2
+        frame = image
         frame = np.hstack((frame, image1.numpy().astype(np.uint8), cv2.flip(image2.numpy().astype(np.uint8), 1)))
-        end =time.time()
-        cv2.putText(frame, f"FPS:{1//(end-start)}", (20, 20),cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 1)
+        end = time.time()
+        if frame.dtype!=np.uint8:
+            frame = frame.astype(np.uint8)
+        cv2.putText(frame, f"FPS:{1 // (end - start)}", (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 1)
         cv2.imshow("frame", frame)
         cv2.waitKey(1)
 
