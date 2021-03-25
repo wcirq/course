@@ -206,11 +206,11 @@ def vedio():
         image = tf.convert_to_tensor(frame, dtype=tf.float32)
         # image = tf.image.random_flip_left_right(image)
         image = image[:, ::-1, :]
-        # image = tf.image.resize_with_crop_or_pad(image, 700, 700)
+        image = tf.image.resize_with_crop_or_pad(image, 700, 700)
         # image = tf.image.random_crop(image, (300, 300, 3))
         # image = tf.image.random_brightness(image, 120)
         # image = tf.image.random_contrast(image,lower=0.2,upper=1.8)
-        image = tf.image.crop_to_bounding_box(image, 100, 0, 320, 200)
+        image = tf.image.crop_to_bounding_box(image, 0, 0, 420, 640)
         image1 = rotate(image, angle, scale=scale, algorithm=0, border_constant=True, constant=255)
         image2 = rotate(image, angle, scale=scale, algorithm=1, border_constant=True, constant=255)
         angle += 2
