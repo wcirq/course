@@ -5,6 +5,7 @@
 # @Software: PyCharm
 # @Site
 import copy
+import itertools
 import threading
 
 import tensorflow as tf
@@ -27,11 +28,12 @@ class ThreeDChart(object):
     LEFT_IS_DOWNED = False  # 鼠标左键被按下
     MOUSE_X, MOUSE_Y = 0, 0  # 考察鼠标位移量时保存的起始位置
 
-    def __init__(self, vbo_vertices=None):
+    def __init__(self, vbo_vertices=None, vbo_indices=None):
         self.coordinate_scope = 15  # 坐标轴范围
         self.tracks = []  # 历史轨迹坐标[[x1, y1, z1], [x2, y2, z2], ...]
         self.xyz = [0, 0, 0]  # 当前位置坐标
-        self.vbo_vertices = vbo_vertices  # 曲面坐标
+        self.vbo_vertices = vbo_vertices  # 曲面坐标值
+        self.vbo_indices = vbo_indices  # 曲面坐标索引
 
         self.DIST, self.PHI, self.THETA = self.__getposture()
         glutInit()
@@ -48,6 +50,10 @@ class ThreeDChart(object):
         glutMouseFunc(self.__mouseclick)  # 注册响应鼠标点击的函数__mouseclick()
         glutMotionFunc(self.__mouse_motion)  # 注册响应鼠标拖拽的函数__mouse_motion()
         glutKeyboardFunc(self.__keydown)  # 注册键盘输入的函数__keydown()
+
+    def update_surface(self, vertices, indices):
+        self.vbo_vertices = vbo.VBO(vertices)
+        self.vbo_indices = vbo.VBO(indices, target=GL_ELEMENT_ARRAY_BUFFER)
 
     def __init_canvas(self):
         glClearColor(0.0, 0.0, 0.0, 1.0)  # 设置画布背景色。注意：这里必须是4个参数
@@ -234,16 +240,16 @@ class ThreeDChart(object):
         # # glutSolidSphere(scope*0.08, 10, 10)
         # glPopMatrix()
 
-        if self.vbo_vertices is not None:
+        if self.vbo_vertices is not None and self.vbo_indices is not None:
             # 绘制曲面
             self.vbo_vertices.bind()
             # glInterleavedArrays(GL_V3F, 0, None)
             glInterleavedArrays(GL_C3F_V3F, 0, None)
             self.vbo_vertices.unbind()
-            self.vbo_vertices.bind()
+            self.vbo_indices.bind()
             # glDrawElements(GL_QUADS, int(vbo_indices.size / 4), GL_UNSIGNED_INT, None)
-            glDrawElements(GL_TRIANGLES, int(self.vbo_vertices.size / 4), GL_UNSIGNED_INT, None)
-            self.vbo_vertices.vbo_verticesices.unbind()
+            glDrawElements(GL_TRIANGLES, int(self.vbo_indices.size / 4), GL_UNSIGNED_INT, None)
+            self.vbo_indices.unbind()
         if len(self.tracks) > 0:
             # 绘制轨迹
             glEnable(GL_BLEND)
@@ -283,6 +289,10 @@ class Model(tf.keras.models.Model):
         outputs = tf.reshape(outputs, (-1,))
         return outputs
 
+class MeanSquaredLoss(tf.keras.losses.Loss):
+    def call(self, y_true, y_pred):
+        return tf.reduce_mean(tf.square(y_pred - y_true))
+
 
 def get_dataset(w=None, num=100, batch_size=10, plt=True):
     """
@@ -297,7 +307,7 @@ def get_dataset(w=None, num=100, batch_size=10, plt=True):
     x_data = np.random.random((num, 2))*5
     x_data = x_data.astype(np.float32)
     y_data = np.zeros((num,), dtype=np.float32)
-    y = np.dot(x_data, np.array(w))
+    y = np.dot(x_data, np.array(w,dtype=np.float32))
     loc = y < y.mean()
     y_data[loc] = 1
     if plt:
@@ -307,22 +317,70 @@ def get_dataset(w=None, num=100, batch_size=10, plt=True):
         plt.scatter(x1, y1, c='#00CED1', alpha=0.8, label='类别A')
         plt.scatter(x2, y2, c='#DC143C', alpha=0.8, label='类别B')
         plt.show()
-    train_dataset = tf.data.Dataset.from_tensor_slices((x_data, y_data))
+    train_dataset = tf.data.Dataset.from_tensor_slices((x_data, y))
     train_dataset = train_dataset.batch(batch_size)
-    return train_dataset
+    return train_dataset, x_data, y
+
+
+def deal_vbo(w0, w1, loss):
+    vertices = []
+    indices = []
+    loss_flatten = loss.flatten()
+    loss_flatten.sort()
+    edge_max = loss_flatten[-20]
+    edge_min = loss_flatten[20]
+    for i in range(len(w0)):
+        for j in range(len(w1)):
+            point = [float(w0[i]), float(loss[i][j]), float(w1[j])]
+            rgba = getColor(int((float(loss[i][j]) - loss.min()) / (loss.max() - loss.min()) * 255))
+            if float(loss[i][j]) < edge_min:
+                rgba = (1.0, 0.0, 0.0, 0.5)
+            if float(loss[i][j]) > edge_max:
+                rgba = (0.0, 1.0, 0.0, 0.5)
+            vertices += rgba[:-1]
+            vertices += point
+            if i < len(w0) - 1 and j < len(w1) - 1:
+                # indices += [i * len(w0) + j, (i + 1) * len(w0) + j, (i + 1) * len(w0) + j + 1, i * len(w0) + j + 1]
+                indices += [i * len(w0) + j,
+                            (i + 1) * len(w0) + j,
+                            (i + 1) * len(w0) + j + 1
+                            ]
+                indices += [i * len(w0) + j,
+                            (i + 1) * len(w0) + j + 1,
+                            i * len(w0) + j + 1
+                            ]
+    return np.array(vertices, np.float32), np.array(indices, np.int)
+
+
+def build_surface(model:Model, loss_fun:MeanSquaredLoss, x_data, y_data):
+    num = 100
+    ws0 = np.linspace(-1, 1, num)
+    ws1 = np.linspace(-1, 1, num)
+    losses = np.zeros((ws0.shape[0], ws1.shape[0]), dtype=np.float32)
+    for i, w0 in enumerate(ws0):
+        for j, w1 in enumerate(ws1):
+            model.trainable_weights[0] = np.array([[w0], [w1]])
+            y_predict = model(x_data)
+            loss = loss_fun(y_data, y_predict)
+            losses[i, j] = loss
+    vertices, indices = deal_vbo(ws0, ws1, losses)
+    return vertices, indices
 
 
 def train(tdc: ThreeDChart):
     num = 1000
     batch_size = 500
-    train_dataset = get_dataset(num=num, batch_size=batch_size)
+    train_dataset, x_data, y_data = get_dataset(num=num, batch_size=batch_size)
     model = Model()
-    optimizer = tf.optimizers.SGD(learning_rate=0.00000002)
+    loss_fun = MeanSquaredLoss()
+    vertices, indices = build_surface(model, loss_fun, x_data, y_data)
+    tdc.update_surface(vertices, indices)
+    optimizer = tf.optimizers.SGD(learning_rate=0.000002)
     while True:
         for step, (x, y_) in enumerate(train_dataset):
             with tf.GradientTape() as tape:
                 y = model(x)
-                loss = tf.reduce_sum(tf.square(y - y_))
+                loss = loss_fun(y_, y)
                 print("loss", loss.numpy(), [i.numpy() for i in model.trainable_weights])
             grads = tape.gradient(loss, model.trainable_weights)
             optimizer.apply_gradients(zip(grads, model.trainable_weights))
