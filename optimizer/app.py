@@ -515,8 +515,8 @@ def train(tdc: ThreeDChart):
     # for optimizer in optimizers:
     #     threading.Thread(target=run, args=(tdc, optimizer, train_dataset)).start()
 
-    optimizer = optimizers[3]
-    epoch = 1000
+    optimizer = optimizers[0]
+    epoch = 2000
     start = time.time()
     for e in range(epoch):
         for step, (x, y_) in enumerate(train_dataset):
